@@ -196,66 +196,88 @@
 #   This is used by monitor, firewall and puppi (optional) components
 #   Can be defined also by the (top scope) variable $carbon_protocol
 #
+# [*max_cache_size*]
+#   Limit the size of the cache to avoid swapping or becoming CPU bound.
+#   Sorts and serving cache queries gets more expensive as the cache grows.
+#   Use the value "inf" (infinity) for an unlimited cache size.
+#
+# [*max_updates_per_second*]
+#   Limits the number of whisper update_many() calls per second, which effectively
+#   means the number of write requests sent to the disk. This is intended to
+#   prevent over-utilizing the disk and thus starving the rest of the system.
+#   When the rate of required updates exceeds this, then carbon's caching will
+#   take effect and increase the overall throughput accordingly.
+#
+# [*max_creates_per_minute*]
+#   Softly limits the number of whisper files that get created each minute.
+#   Setting this value low (like at 50) is a good way to ensure your graphite
+#   system will not be adversely impacted when a bunch of new metrics are
+#   sent to it. The trade off is that it will take much longer for those metrics'
+#   database files to all get created and thus longer until the data becomes usable.
+#   Setting this value high (like "inf" for infinity) will cause graphite to create
+#   the files quickly but at the risk of slowing I/O down considerably for a while.
 #
 # See README for usage patterns.
 #
 class carbon (
-  $my_class            = params_lookup( 'my_class' ),
-  $source              = params_lookup( 'source' ),
-  $source_dir          = params_lookup( 'source_dir' ),
-  $source_dir_purge    = params_lookup( 'source_dir_purge' ),
-  $template            = params_lookup( 'template' ),
-  $service_autorestart = params_lookup( 'service_autorestart' , 'global' ),
-  $options             = params_lookup( 'options' ),
-  $version             = params_lookup( 'version' ),
-  $absent              = params_lookup( 'absent' ),
-  $disable             = params_lookup( 'disable' ),
-  $disableboot         = params_lookup( 'disableboot' ),
-  $monitor             = params_lookup( 'monitor' , 'global' ),
-  $monitor_tool        = params_lookup( 'monitor_tool' , 'global' ),
-  $monitor_target      = params_lookup( 'monitor_target' , 'global' ),
-  $puppi               = params_lookup( 'puppi' , 'global' ),
-  $puppi_helper        = params_lookup( 'puppi_helper' , 'global' ),
-  $firewall            = params_lookup( 'firewall' , 'global' ),
-  $firewall_tool       = params_lookup( 'firewall_tool' , 'global' ),
-  $firewall_src        = params_lookup( 'firewall_src' , 'global' ),
-  $firewall_dst        = params_lookup( 'firewall_dst' , 'global' ),
-  $debug               = params_lookup( 'debug' , 'global' ),
-  $audit_only          = params_lookup( 'audit_only' , 'global' ),
-  $noops               = params_lookup( 'noops' ),
-  $package             = params_lookup( 'package' ),
-  $service             = params_lookup( 'service' ),
-  $service_status      = params_lookup( 'service_status' ),
-  $process             = params_lookup( 'process' ),
-  $process_args        = params_lookup( 'process_args' ),
-  $process_user        = params_lookup( 'process_user' ),
-  $config_dir          = params_lookup( 'config_dir' ),
-  $config_file         = params_lookup( 'config_file' ),
-  $config_file_mode    = params_lookup( 'config_file_mode' ),
-  $config_file_owner   = params_lookup( 'config_file_owner' ),
-  $config_file_group   = params_lookup( 'config_file_group' ),
-  $config_file_init    = params_lookup( 'config_file_init' ),
-  $pid_file            = params_lookup( 'pid_file' ),
-  $data_dir            = params_lookup( 'data_dir' ),
-  $log_dir             = params_lookup( 'log_dir' ),
-  $log_file            = params_lookup( 'log_file' ),
-  $port                = params_lookup( 'port' ),
-  $protocol            = params_lookup( 'protocol' )
-  ) inherits carbon::params {
+  $my_class            = params_lookup('my_class'),
+  $source              = params_lookup('source'),
+  $source_dir          = params_lookup('source_dir'),
+  $source_dir_purge    = params_lookup('source_dir_purge'),
+  $template            = params_lookup('template'),
+  $service_autorestart = params_lookup('service_autorestart', 'global'),
+  $options             = params_lookup('options'),
+  $version             = params_lookup('version'),
+  $absent              = params_lookup('absent'),
+  $disable             = params_lookup('disable'),
+  $disableboot         = params_lookup('disableboot'),
+  $monitor             = params_lookup('monitor', 'global'),
+  $monitor_tool        = params_lookup('monitor_tool', 'global'),
+  $monitor_target      = params_lookup('monitor_target', 'global'),
+  $puppi               = params_lookup('puppi', 'global'),
+  $puppi_helper        = params_lookup('puppi_helper', 'global'),
+  $firewall            = params_lookup('firewall', 'global'),
+  $firewall_tool       = params_lookup('firewall_tool', 'global'),
+  $firewall_src        = params_lookup('firewall_src', 'global'),
+  $firewall_dst        = params_lookup('firewall_dst', 'global'),
+  $debug               = params_lookup('debug', 'global'),
+  $audit_only          = params_lookup('audit_only', 'global'),
+  $noops               = params_lookup('noops'),
+  $package             = params_lookup('package'),
+  $service             = params_lookup('service'),
+  $service_status      = params_lookup('service_status'),
+  $process             = params_lookup('process'),
+  $process_args        = params_lookup('process_args'),
+  $process_user        = params_lookup('process_user'),
+  $config_dir          = params_lookup('config_dir'),
+  $config_file         = params_lookup('config_file'),
+  $config_file_mode    = params_lookup('config_file_mode'),
+  $config_file_owner   = params_lookup('config_file_owner'),
+  $config_file_group   = params_lookup('config_file_group'),
+  $config_file_init    = params_lookup('config_file_init'),
+  $config_file_init_template = params_lookup('config_file_init_template'),
+  $pid_file            = params_lookup('pid_file'),
+  $data_dir            = params_lookup('data_dir'),
+  $log_dir             = params_lookup('log_dir'),
+  $log_file            = params_lookup('log_file'),
+  $port                = params_lookup('port'),
+  $protocol            = params_lookup('protocol'),
+  $max_cache_size      = params_lookup('max_cache_size'),
+  $max_updates_per_second    = params_lookup('max_updates_per_second'),
+  $max_creates_per_minute    = params_lookup('max_creates_per_minute'),) inherits carbon::params {
+  $bool_source_dir_purge = any2bool($source_dir_purge)
+  $bool_service_autorestart = any2bool($service_autorestart)
+  $bool_absent = any2bool($absent)
+  $bool_disable = any2bool($disable)
+  $bool_disableboot = any2bool($disableboot)
+  $bool_monitor = any2bool($monitor)
+  $bool_puppi = any2bool($puppi)
+  $bool_firewall = any2bool($firewall)
+  $bool_debug = any2bool($debug)
+  $bool_audit_only = any2bool($audit_only)
+  $bool_noops = any2bool($noops)
 
-  $bool_source_dir_purge=any2bool($source_dir_purge)
-  $bool_service_autorestart=any2bool($service_autorestart)
-  $bool_absent=any2bool($absent)
-  $bool_disable=any2bool($disable)
-  $bool_disableboot=any2bool($disableboot)
-  $bool_monitor=any2bool($monitor)
-  $bool_puppi=any2bool($puppi)
-  $bool_firewall=any2bool($firewall)
-  $bool_debug=any2bool($debug)
-  $bool_audit_only=any2bool($audit_only)
-  $bool_noops=any2bool($noops)
-
-  ### Definition of some variables used in the module
+  # ## Definition of some variables used in the module
   $manage_package = $carbon::bool_absent ? {
     true  => 'absent',
     false => $carbon::version,
@@ -274,15 +296,15 @@ class carbon (
 
   $manage_service_ensure = $carbon::bool_disable ? {
     true    => 'stopped',
-    default =>  $carbon::bool_absent ? {
+    default => $carbon::bool_absent ? {
       true    => 'stopped',
       default => 'running',
     },
   }
 
   $manage_service_autorestart = $carbon::bool_service_autorestart ? {
-    true    => Service[carbon],
-    false   => undef,
+    true  => Service[carbon],
+    false => undef,
   }
 
   $manage_file = $carbon::bool_absent ? {
@@ -290,16 +312,13 @@ class carbon (
     default => 'present',
   }
 
-  if $carbon::bool_absent == true
-  or $carbon::bool_disable == true
-  or $carbon::bool_disableboot == true {
+  if $carbon::bool_absent == true or $carbon::bool_disable == true or $carbon::bool_disableboot == true {
     $manage_monitor = false
   } else {
     $manage_monitor = true
   }
 
-  if $carbon::bool_absent == true
-  or $carbon::bool_disable == true {
+  if $carbon::bool_absent == true or $carbon::bool_disable == true {
     $manage_firewall = false
   } else {
     $manage_firewall = true
@@ -316,29 +335,29 @@ class carbon (
   }
 
   $manage_file_source = $carbon::source ? {
-    ''        => undef,
-    default   => $carbon::source,
+    ''      => undef,
+    default => $carbon::source,
   }
 
   $manage_file_content = $carbon::template ? {
-    ''        => undef,
-    default   => template($carbon::template),
+    ''      => undef,
+    default => template($carbon::template),
   }
 
-  ### Managed resources
+  # ## Managed resources
   package { $carbon::package:
-    ensure  => $carbon::manage_package,
-    noop    => $carbon::bool_noops,
+    ensure => $carbon::manage_package,
+    noop   => $carbon::bool_noops,
   }
 
   service { 'carbon':
-    ensure     => $carbon::manage_service_ensure,
-    name       => $carbon::service,
-    enable     => $carbon::manage_service_enable,
-    hasstatus  => $carbon::service_status,
-    pattern    => $carbon::process,
-    require    => Package[$carbon::package],
-    noop       => $carbon::bool_noops,
+    ensure    => $carbon::manage_service_ensure,
+    name      => $carbon::service,
+    enable    => $carbon::manage_service_enable,
+    hasstatus => $carbon::service_status,
+    pattern   => $carbon::process,
+    require   => Package[$carbon::package],
+    noop      => $carbon::bool_noops,
   }
 
   file { 'carbon.conf':
@@ -373,16 +392,22 @@ class carbon (
     }
   }
 
+  if $::operatingsystem =~ /(?i:Debian|Ubuntu|Mint)/ {
+    file { 'carbon_service_config':
+      path    => $carbon::config_file_init,
+      content => template($carbon::config_file_init_template)
+    }
+  }
 
-  ### Include custom class if $my_class is set
+  # ## Include custom class if $my_class is set
   if $carbon::my_class {
     include $carbon::my_class
   }
 
-
-  ### Provide puppi data, if enabled ( puppi => true )
+  # ## Provide puppi data, if enabled ( puppi => true )
   if $carbon::bool_puppi == true {
-    $classvars=get_class_args()
+    $classvars = get_class_args()
+
     puppi::ze { 'carbon':
       ensure    => $carbon::manage_file,
       variables => $classvars,
@@ -391,8 +416,7 @@ class carbon (
     }
   }
 
-
-  ### Service monitoring, if enabled ( monitor => true )
+  # ## Service monitoring, if enabled ( monitor => true )
   if $carbon::bool_monitor == true {
     if $carbon::port != '' {
       monitor::port { "carbon_${carbon::protocol}_${carbon::port}":
@@ -404,6 +428,7 @@ class carbon (
         noop     => $carbon::bool_noops,
       }
     }
+
     if $carbon::service != '' {
       monitor::process { 'carbon_process':
         process  => $carbon::process,
@@ -418,8 +443,7 @@ class carbon (
     }
   }
 
-
-  ### Firewall management, if enabled ( firewall => true )
+  # ## Firewall management, if enabled ( firewall => true )
   if $carbon::bool_firewall == true and $carbon::port != '' {
     firewall { "carbon_${carbon::protocol}_${carbon::port}":
       source      => $carbon::firewall_src,
@@ -434,8 +458,7 @@ class carbon (
     }
   }
 
-
-  ### Debugging, if enabled ( debug => true )
+  # ## Debugging, if enabled ( debug => true )
   if $carbon::bool_debug == true {
     file { 'debug_carbon':
       ensure  => $carbon::manage_file,
@@ -443,7 +466,8 @@ class carbon (
       mode    => '0640',
       owner   => 'root',
       group   => 'root',
-      content => inline_template('<%= scope.to_hash.reject { |k,v| k.to_s =~ /(uptime.*|path|timestamp|free|.*password.*|.*psk.*|.*key)/ }.to_yaml %>'),
+      content => inline_template('<%= scope.to_hash.reject { |k,v| k.to_s =~ /(uptime.*|path|timestamp|free|.*password.*|.*psk.*|.*key)/ }.to_yaml %>'
+      ),
       noop    => $carbon::bool_noops,
     }
   }

@@ -17,11 +17,11 @@ class carbon::params {
   ### Application related parameters
 
   $package = $::operatingsystem ? {
-    default => 'carbon',
+    default => 'graphite-carbon',
   }
 
   $service = $::operatingsystem ? {
-    default => 'carbon',
+    default => 'carbon-cache',
   }
 
   $service_status = $::operatingsystem ? {
@@ -29,7 +29,7 @@ class carbon::params {
   }
 
   $process = $::operatingsystem ? {
-    default => 'carbon',
+    default => 'carbon-cache',
   }
 
   $process_args = $::operatingsystem ? {
@@ -37,7 +37,7 @@ class carbon::params {
   }
 
   $process_user = $::operatingsystem ? {
-    default => 'carbon',
+    default => '_graphite',
   }
 
   $config_dir = $::operatingsystem ? {
@@ -61,16 +61,18 @@ class carbon::params {
   }
 
   $config_file_init = $::operatingsystem ? {
-    /(?i:Debian|Ubuntu|Mint)/ => '/etc/default/carbon',
-    default                   => '/etc/sysconfig/carbon',
+    /(?i:Debian|Ubuntu|Mint)/ => '/etc/default/graphite-carbon',
+    default                   => '/etc/sysconfig/graphite-carbon',
   }
+
+  $config_file_init_template = 'carbon/debian_service_config.erb'
 
   $pid_file = $::operatingsystem ? {
     default => '/var/run/carbon.pid',
   }
 
   $data_dir = $::operatingsystem ? {
-    default => '/etc/carbon',
+    default => '/var/lib/graphite',
   }
 
   $log_dir = $::operatingsystem ? {
@@ -81,15 +83,18 @@ class carbon::params {
     default => '/var/log/carbon/carbon.log',
   }
 
-  $port = '42'
+  $port = '2003'
   $protocol = 'tcp'
+  $max_cache_size = 'inf'
+  $max_updates_per_second = 500
+  $max_creates_per_minute = 50
 
   # General Settings
   $my_class = ''
   $source = ''
   $source_dir = ''
   $source_dir_purge = false
-  $template = ''
+  $template = 'carbon/carbon.conf.erb'
   $options = ''
   $service_autorestart = true
   $version = 'present'
