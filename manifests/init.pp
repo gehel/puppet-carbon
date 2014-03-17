@@ -303,7 +303,7 @@ class carbon (
   }
 
   $manage_service_autorestart = $carbon::bool_service_autorestart ? {
-    true  => Service[carbon],
+    true  => Service[carbon-cache],
     false => undef,
   }
 
@@ -350,7 +350,7 @@ class carbon (
     noop   => $carbon::bool_noops,
   }
 
-  service { 'carbon':
+  service { 'carbon-cache':
     ensure    => $carbon::manage_service_ensure,
     name      => $carbon::service,
     enable    => $carbon::manage_service_enable,
