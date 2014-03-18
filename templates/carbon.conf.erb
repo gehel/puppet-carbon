@@ -19,7 +19,7 @@ CONF_DIR       = <%= @config_dir %>
 LOG_DIR        = <%= @log_dir %>
 PID_DIR        = /var/run/
 
-LOCAL_DATA_DIR = <%= @data_dir %>/whisper/
+LOCAL_DATA_DIR = <%= @whisper_dir %>
 
 # Specify the user to drop privileges to
 # If this is blank carbon runs as the user that invokes it
@@ -58,7 +58,7 @@ UDP_RECEIVER_INTERFACE = 0.0.0.0
 UDP_RECEIVER_PORT = <%= @port %>
 
 PICKLE_RECEIVER_INTERFACE = 0.0.0.0
-PICKLE_RECEIVER_PORT = 2004
+PICKLE_RECEIVER_PORT = <%= @pickle_receiver_port %>
 
 # Per security concerns outlined in Bug #817247 the pickle receiver
 # will use a more secure and slightly less efficient unpickler.
@@ -66,7 +66,7 @@ PICKLE_RECEIVER_PORT = 2004
 USE_INSECURE_UNPICKLER = False
 
 CACHE_QUERY_INTERFACE = 0.0.0.0
-CACHE_QUERY_PORT = 7002
+CACHE_QUERY_PORT = <%= @cache_query_port %>
 
 # Set this to False to drop datapoints received after the cache
 # reaches MAX_CACHE_SIZE. If this is True (the default) then sockets
@@ -104,8 +104,8 @@ WHISPER_AUTOFLUSH = False
 # By default, carbon itself will log statistics (such as a count,
 # metricsReceived) with the top level prefix of 'carbon' at an interval of 60
 # seconds. Set CARBON_METRIC_INTERVAL to 0 to disable instrumentation
-# CARBON_METRIC_PREFIX = carbon
-# CARBON_METRIC_INTERVAL = 60
+CARBON_METRIC_PREFIX = <%= @carbon_metric_prefix %>
+CARBON_METRIC_INTERVAL = <%= @carbon_metric_interval %>
 
 # Enable AMQP if you want to receve metrics using an amqp broker
 # ENABLE_AMQP = False

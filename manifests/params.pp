@@ -13,8 +13,7 @@
 # It may be imported or inherited by other classes
 #
 class carbon::params {
-
-  ### Application related parameters
+  # ## Application related parameters
 
   $package = $::operatingsystem ? {
     default => 'graphite-carbon',
@@ -37,6 +36,10 @@ class carbon::params {
   }
 
   $process_user = $::operatingsystem ? {
+    default => '_graphite',
+  }
+
+  $process_group = $::operatingsystem ? {
     default => '_graphite',
   }
 
@@ -75,6 +78,10 @@ class carbon::params {
     default => '/var/lib/graphite',
   }
 
+  $whisper_dir = $::operatingsystem ? {
+    default => '/var/lib/graphite/whisper',
+  }
+
   $log_dir = $::operatingsystem ? {
     default => '/var/log/carbon',
   }
@@ -83,11 +90,15 @@ class carbon::params {
     default => '/var/log/carbon/carbon.log',
   }
 
-  $port = '2003'
+  $port = 2003
+  $pickle_receiver_port = 2004
+  $cache_query_port = 7002
   $protocol = 'tcp'
   $max_cache_size = 'inf'
   $max_updates_per_second = 500
   $max_creates_per_minute = 50
+  $carbon_metric_prefix = 'carbon'
+  $carbon_metric_interval = 60
 
   # General Settings
   $my_class = ''
@@ -102,7 +113,7 @@ class carbon::params {
   $disable = false
   $disableboot = false
 
-  ### General module variables that can have a site or per module default
+  # ## General module variables that can have a site or per module default
   $monitor = false
   $monitor_tool = ''
   $monitor_target = $::ipaddress

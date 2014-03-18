@@ -155,6 +155,9 @@
 # [*process_user*]
 #   The name of the user carbon runs with. Used by puppi and monitor.
 #
+# [*process_group*]
+#   The name of the user carbon runs with.
+#
 # [*config_dir*]
 #   Main configuration directory. Used by puppi
 #
@@ -191,6 +194,10 @@
 #   Note: This doesn't necessarily affect the service configuration file
 #   Can be defined also by the (top scope) variable $carbon_port
 #
+# [*pickle_receiver_port*]
+#
+# [*cache_query_port*]
+#
 # [*protocol*]
 #   The protocol used by the the service.
 #   This is used by monitor, firewall and puppi (optional) components
@@ -217,54 +224,69 @@
 #   Setting this value high (like "inf" for infinity) will cause graphite to create
 #   the files quickly but at the risk of slowing I/O down considerably for a while.
 #
+# [*whisper_dir*]
+#   Directory where whisper file are stored.
+#
+# [*carbon_metric_prefix*]
+# [*carbon_metric_interval*]
+#   By default, carbon itself will log statistics (such as a count,
+#   metricsReceived) with the top level prefix of 'carbon' at an interval of 60
+#   seconds. Set CARBON_METRIC_INTERVAL to 0 to disable instrumentation
+#
 # See README for usage patterns.
 #
 class carbon (
-  $my_class            = params_lookup('my_class'),
-  $source              = params_lookup('source'),
-  $source_dir          = params_lookup('source_dir'),
-  $source_dir_purge    = params_lookup('source_dir_purge'),
-  $template            = params_lookup('template'),
-  $service_autorestart = params_lookup('service_autorestart', 'global'),
-  $options             = params_lookup('options'),
-  $version             = params_lookup('version'),
-  $absent              = params_lookup('absent'),
-  $disable             = params_lookup('disable'),
-  $disableboot         = params_lookup('disableboot'),
-  $monitor             = params_lookup('monitor', 'global'),
-  $monitor_tool        = params_lookup('monitor_tool', 'global'),
-  $monitor_target      = params_lookup('monitor_target', 'global'),
-  $puppi               = params_lookup('puppi', 'global'),
-  $puppi_helper        = params_lookup('puppi_helper', 'global'),
-  $firewall            = params_lookup('firewall', 'global'),
-  $firewall_tool       = params_lookup('firewall_tool', 'global'),
-  $firewall_src        = params_lookup('firewall_src', 'global'),
-  $firewall_dst        = params_lookup('firewall_dst', 'global'),
-  $debug               = params_lookup('debug', 'global'),
-  $audit_only          = params_lookup('audit_only', 'global'),
-  $noops               = params_lookup('noops'),
-  $package             = params_lookup('package'),
-  $service             = params_lookup('service'),
-  $service_status      = params_lookup('service_status'),
-  $process             = params_lookup('process'),
-  $process_args        = params_lookup('process_args'),
-  $process_user        = params_lookup('process_user'),
-  $config_dir          = params_lookup('config_dir'),
-  $config_file         = params_lookup('config_file'),
-  $config_file_mode    = params_lookup('config_file_mode'),
-  $config_file_owner   = params_lookup('config_file_owner'),
-  $config_file_group   = params_lookup('config_file_group'),
-  $config_file_init    = params_lookup('config_file_init'),
+  $my_class       = params_lookup('my_class'),
+  $source         = params_lookup('source'),
+  $source_dir     = params_lookup('source_dir'),
+  $source_dir_purge          = params_lookup('source_dir_purge'),
+  $template       = params_lookup('template'),
+  $service_autorestart       = params_lookup('service_autorestart', 'global'),
+  $options        = params_lookup('options'),
+  $version        = params_lookup('version'),
+  $absent         = params_lookup('absent'),
+  $disable        = params_lookup('disable'),
+  $disableboot    = params_lookup('disableboot'),
+  $monitor        = params_lookup('monitor', 'global'),
+  $monitor_tool   = params_lookup('monitor_tool', 'global'),
+  $monitor_target = params_lookup('monitor_target', 'global'),
+  $puppi          = params_lookup('puppi', 'global'),
+  $puppi_helper   = params_lookup('puppi_helper', 'global'),
+  $firewall       = params_lookup('firewall', 'global'),
+  $firewall_tool  = params_lookup('firewall_tool', 'global'),
+  $firewall_src   = params_lookup('firewall_src', 'global'),
+  $firewall_dst   = params_lookup('firewall_dst', 'global'),
+  $debug          = params_lookup('debug', 'global'),
+  $audit_only     = params_lookup('audit_only', 'global'),
+  $noops          = params_lookup('noops'),
+  $package        = params_lookup('package'),
+  $service        = params_lookup('service'),
+  $service_status = params_lookup('service_status'),
+  $process        = params_lookup('process'),
+  $process_args   = params_lookup('process_args'),
+  $process_user   = params_lookup('process_user'),
+  $process_group  = params_lookup('process_group'),
+  $config_dir     = params_lookup('config_dir'),
+  $config_file    = params_lookup('config_file'),
+  $config_file_mode          = params_lookup('config_file_mode'),
+  $config_file_owner         = params_lookup('config_file_owner'),
+  $config_file_group         = params_lookup('config_file_group'),
+  $config_file_init          = params_lookup('config_file_init'),
   $config_file_init_template = params_lookup('config_file_init_template'),
-  $pid_file            = params_lookup('pid_file'),
-  $data_dir            = params_lookup('data_dir'),
-  $log_dir             = params_lookup('log_dir'),
-  $log_file            = params_lookup('log_file'),
-  $port                = params_lookup('port'),
-  $protocol            = params_lookup('protocol'),
-  $max_cache_size      = params_lookup('max_cache_size'),
+  $pid_file       = params_lookup('pid_file'),
+  $data_dir       = params_lookup('data_dir'),
+  $log_dir        = params_lookup('log_dir'),
+  $log_file       = params_lookup('log_file'),
+  $port           = params_lookup('port'),
+  $pickle_receiver_port      = params_lookup('pickle_receiver_port'),
+  $cache_query_port          = params_lookup('cache_query_port'),
+  $protocol       = params_lookup('protocol'),
+  $max_cache_size = params_lookup('max_cache_size'),
   $max_updates_per_second    = params_lookup('max_updates_per_second'),
-  $max_creates_per_minute    = params_lookup('max_creates_per_minute'),) inherits carbon::params {
+  $max_creates_per_minute    = params_lookup('max_creates_per_minute'),
+  $whisper_dir    = params_lookup('whisper_dir'),
+  $carbon_metric_prefix      = params_lookup('carbon_metric_prefix'),
+  $carbon_metric_interval    = params_lookup('carbon_metric_interval'),) inherits carbon::params {
   $bool_source_dir_purge = any2bool($source_dir_purge)
   $bool_service_autorestart = any2bool($service_autorestart)
   $bool_absent = any2bool($absent)
@@ -310,6 +332,11 @@ class carbon (
   $manage_file = $carbon::bool_absent ? {
     true    => 'absent',
     default => 'present',
+  }
+
+  $manage_directory = $carbon::bool_absent ? {
+    true    => 'absent',
+    default => 'directory',
   }
 
   if $carbon::bool_absent == true or $carbon::bool_disable == true or $carbon::bool_disableboot == true {
@@ -390,6 +417,21 @@ class carbon (
       audit   => $carbon::manage_audit,
       noop    => $carbon::bool_noops,
     }
+  }
+
+  file { 'whisper.dir':
+    ensure  => $carbon::manage_directory,
+    path    => $carbon::whisper_dir,
+    mode    => $carbon::config_file_mode,
+    owner   => $carbon::process_user,
+    group   => $carbon::process_group,
+    require => Package[$carbon::package],
+    notify  => $carbon::manage_service_autorestart,
+    source  => $carbon::manage_file_source,
+    content => $carbon::manage_file_content,
+    replace => $carbon::manage_file_replace,
+    audit   => $carbon::manage_audit,
+    noop    => $carbon::bool_noops,
   }
 
   if $::operatingsystem =~ /(?i:Debian|Ubuntu|Mint)/ {
