@@ -233,15 +233,34 @@
 #   metricsReceived) with the top level prefix of 'carbon' at an interval of 60
 #   seconds. Set CARBON_METRIC_INTERVAL to 0 to disable instrumentation
 #
+# [*relay_destinations*]
+#   This is a list of carbon daemons we will send any relayed or
+#   generated metrics to. The default provided would send to a single
+#   carbon-cache instance on the default port. However if you
+#   use multiple carbon-cache instances then it would look like this:
+#
+#   DESTINATIONS = 127.0.0.1:2004:a, 127.0.0.1:2104:b
+#
+#   The general form is IP:PORT:INSTANCE where the :INSTANCE part is
+#   optional and refers to the "None" instance if omitted.
+#
+#   Note that if the destinations are all carbon-caches then this should
+#   exactly match the webapp's CARBONLINK_HOSTS setting in terms of
+#   instances listed (order matters!).
+#
+#   If using RELAY_METHOD = rules, all destinations used in relay-rules.conf
+#   must be defined in this list
+#
+#
 # See README for usage patterns.
 #
 class carbon (
   $my_class       = params_lookup('my_class'),
   $source         = params_lookup('source'),
   $source_dir     = params_lookup('source_dir'),
-  $source_dir_purge          = params_lookup('source_dir_purge'),
+  $source_dir_purge                  = params_lookup('source_dir_purge'),
   $template       = params_lookup('template'),
-  $service_autorestart       = params_lookup('service_autorestart', 'global'),
+  $service_autorestart               = params_lookup('service_autorestart', 'global'),
   $options        = params_lookup('options'),
   $version        = params_lookup('version'),
   $absent         = params_lookup('absent'),
@@ -261,32 +280,52 @@ class carbon (
   $noops          = params_lookup('noops'),
   $package        = params_lookup('package'),
   $service        = params_lookup('service'),
+  $service_relay  = params_lookup('service_relay'),
   $service_status = params_lookup('service_status'),
+  $service_status_relay              = params_lookup('service_status_relay'),
   $process        = params_lookup('process'),
+  $process_relay  = params_lookup('process_relay'),
   $process_args   = params_lookup('process_args'),
+  $process_args_relay                = params_lookup('process_args_relay'),
   $process_user   = params_lookup('process_user'),
   $process_group  = params_lookup('process_group'),
   $config_dir     = params_lookup('config_dir'),
   $config_file    = params_lookup('config_file'),
-  $config_file_mode          = params_lookup('config_file_mode'),
-  $config_file_owner         = params_lookup('config_file_owner'),
-  $config_file_group         = params_lookup('config_file_group'),
-  $config_file_init          = params_lookup('config_file_init'),
-  $config_file_init_template = params_lookup('config_file_init_template'),
+  $config_file_mode                  = params_lookup('config_file_mode'),
+  $config_file_owner                 = params_lookup('config_file_owner'),
+  $config_file_group                 = params_lookup('config_file_group'),
+  $carbon_cache_init_script          = params_lookup('carbon_cache_init_script'),
+  $carbon_cache_init_script_mode     = params_lookup('carbon_cache_init_script_mode'),
+  $carbon_cache_init_script_content  = params_lookup('carbon_cache_init_script_content'),
+  $carbon_cache_init_script_source   = params_lookup('carbon_cache_init_script_source'),
+  $carbon_cache_init_script_template = params_lookup('carbon_cache_init_script_template'),
+  $carbon_relay_init_script          = params_lookup('carbon_relay_init_script'),
+  $carbon_relay_init_script_mode     = params_lookup('carbon_relay_init_script_mode'),
+  $carbon_relay_init_script_content  = params_lookup('carbon_relay_init_script_content'),
+  $carbon_relay_init_script_source   = params_lookup('carbon_relay_init_script_source'),
+  $carbon_relay_init_script_template = params_lookup('carbon_relay_init_script_template'),
+  $carbon_relay_enabled              = params_lookup('carbon_relay_enabled'),
+  $config_file_init                  = params_lookup('config_file_init'),
+  $config_file_init_template         = params_lookup('config_file_init_template'),
   $pid_file       = params_lookup('pid_file'),
   $data_dir       = params_lookup('data_dir'),
   $log_dir        = params_lookup('log_dir'),
   $log_file       = params_lookup('log_file'),
   $port           = params_lookup('port'),
-  $pickle_receiver_port      = params_lookup('pickle_receiver_port'),
-  $cache_query_port          = params_lookup('cache_query_port'),
+  $pickle_receiver_port              = params_lookup('pickle_receiver_port'),
+  $cache_query_port                  = params_lookup('cache_query_port'),
+  $relay_line_receiver_port          = params_lookup('relay_line_receiver_port'),
+  $relay_pickle_receiver_port        = params_lookup('relay_pickle_receiver_port'),
   $protocol       = params_lookup('protocol'),
   $max_cache_size = params_lookup('max_cache_size'),
-  $max_updates_per_second    = params_lookup('max_updates_per_second'),
-  $max_creates_per_minute    = params_lookup('max_creates_per_minute'),
+  $max_updates_per_second            = params_lookup('max_updates_per_second'),
+  $max_creates_per_minute            = params_lookup('max_creates_per_minute'),
   $whisper_dir    = params_lookup('whisper_dir'),
-  $carbon_metric_prefix      = params_lookup('carbon_metric_prefix'),
-  $carbon_metric_interval    = params_lookup('carbon_metric_interval'),) inherits carbon::params {
+  $carbon_metric_prefix              = params_lookup('carbon_metric_prefix'),
+  $carbon_metric_interval            = params_lookup('carbon_metric_interval'),
+  $relay_method   = params_lookup('relay_method'),
+  $relay_destinations                = params_lookup('relay_destinations'),
+  $instance_name  = params_lookup('instance_name'),) inherits carbon::params {
   $bool_source_dir_purge = any2bool($source_dir_purge)
   $bool_service_autorestart = any2bool($service_autorestart)
   $bool_absent = any2bool($absent)
@@ -316,6 +355,8 @@ class carbon (
     },
   }
 
+  $manage_service_enable_relay = $carbon::manage_service_enable and $carbon::carbon_relay_enabled
+
   $manage_service_ensure = $carbon::bool_disable ? {
     true    => 'stopped',
     default => $carbon::bool_absent ? {
@@ -324,8 +365,27 @@ class carbon (
     },
   }
 
+  $manage_service_ensure_relay = $carbon::manage_service_ensure ? {
+    'stopped' => 'stopped',
+    'running' => $carbon::carbon_relay_enabled ? {
+      true    => 'running',
+      default => 'stopped',
+    },
+    default   => 'stopped',
+  }
+
+  $manage_cache_init_script_content = $carbon::carbon_cache_init_script_content ? {
+    undef   => template($carbon::carbon_cache_init_script_template),
+    default => $carbon::carbon_cache_init_script_content,
+  }
+
+  $manage_relay_init_script_content = $carbon::carbon_relay_init_script_content ? {
+    undef   => template($carbon::carbon_relay_init_script_template),
+    default => $carbon::carbon_relay_init_script_content,
+  }
+
   $manage_service_autorestart = $carbon::bool_service_autorestart ? {
-    true  => Service[carbon-cache],
+    true  => [Service[carbon-cache], Service[carbon-relay],],
     false => undef,
   }
 
@@ -387,6 +447,16 @@ class carbon (
     noop      => $carbon::bool_noops,
   }
 
+  service { 'carbon-relay':
+    ensure    => $carbon::manage_service_ensure_relay,
+    name      => $carbon::service_relay,
+    enable    => $carbon::manage_service_enable_relay,
+    hasstatus => $carbon::service_status_relay,
+    pattern   => $carbon::process_relay,
+    require   => [Package[$carbon::package], File['carbon.relay.init'],],
+    noop      => $carbon::bool_noops,
+  }
+
   file { 'carbon.conf':
     ensure  => $carbon::manage_file,
     path    => $carbon::config_file,
@@ -397,6 +467,34 @@ class carbon (
     notify  => $carbon::manage_service_autorestart,
     source  => $carbon::manage_file_source,
     content => $carbon::manage_file_content,
+    replace => $carbon::manage_file_replace,
+    audit   => $carbon::manage_audit,
+    noop    => $carbon::bool_noops,
+  }
+
+  file { 'carbon.cache.init':
+    ensure  => $carbon::manage_file,
+    path    => $carbon::carbon_cache_init_script,
+    mode    => $carbon::carbon_cache_init_script_mode,
+    owner   => $carbon::config_file_owner,
+    group   => $carbon::config_file_group,
+    require => Package[$carbon::package],
+    content => $carbon::manage_cache_init_script_content,
+    source  => $carbon::carbon_cache_init_script_source,
+    replace => $carbon::manage_file_replace,
+    audit   => $carbon::manage_audit,
+    noop    => $carbon::bool_noops,
+  }
+
+  file { 'carbon.relay.init':
+    ensure  => $carbon::manage_file,
+    path    => $carbon::carbon_relay_init_script,
+    mode    => $carbon::carbon_relay_init_script_mode,
+    owner   => $carbon::config_file_owner,
+    group   => $carbon::config_file_group,
+    require => Package[$carbon::package],
+    content => $carbon::manage_relay_init_script_content,
+    source  => $carbon::carbon_relay_init_script_source,
     replace => $carbon::manage_file_replace,
     audit   => $carbon::manage_audit,
     noop    => $carbon::bool_noops,
@@ -471,6 +569,50 @@ class carbon (
       }
     }
 
+    if $carbon::pickle_receiver_port != '' {
+      monitor::port { "carbon_pickle_receiver_tcp_${carbon::pickle_receiver_port}":
+        protocol => 'tcp',
+        port     => $carbon::pickle_receiver_port,
+        target   => $carbon::monitor_target,
+        tool     => $carbon::monitor_tool,
+        enable   => $carbon::manage_monitor,
+        noop     => $carbon::bool_noops,
+      }
+    }
+
+    if $carbon::relay_line_receiver_port != '' {
+      monitor::port { "carbon_relay_line_receiver_tcp_${carbon::relay_line_receiver_port}":
+        protocol => 'tcp',
+        port     => $carbon::relay_line_receiver_port,
+        target   => $carbon::monitor_target,
+        tool     => $carbon::monitor_tool,
+        enable   => $carbon::manage_monitor,
+        noop     => $carbon::bool_noops,
+      }
+    }
+
+    if $carbon::relay_pickle_receiver_port != '' {
+      monitor::port { "carbon_relay_pickle_receiver_tcp_${carbon::relay_pickle_receiver_port}":
+        protocol => 'tcp',
+        port     => $carbon::relay_pickle_receiver_port,
+        target   => $carbon::monitor_target,
+        tool     => $carbon::monitor_tool,
+        enable   => $carbon::manage_monitor,
+        noop     => $carbon::bool_noops,
+      }
+    }
+
+    if $carbon::cache_query_port != '' {
+      monitor::port { "carbon_cache_query_port_tcp_${carbon::cache_query_port}":
+        protocol => 'tcp',
+        port     => $carbon::cache_query_port,
+        target   => $carbon::monitor_target,
+        tool     => $carbon::monitor_tool,
+        enable   => $carbon::manage_monitor,
+        noop     => $carbon::bool_noops,
+      }
+    }
+
     if $carbon::service != '' {
       monitor::process { 'carbon_process':
         process  => $carbon::process,
@@ -483,20 +625,91 @@ class carbon (
         noop     => $carbon::bool_noops,
       }
     }
+
+    if $carbon::service_relay != '' {
+      monitor::process { 'carbon_relay_process':
+        process  => $carbon::process_relay,
+        service  => $carbon::service_relay,
+        pidfile  => $carbon::pid_file,
+        user     => $carbon::process_user,
+        argument => $carbon::process_args_relay,
+        tool     => $carbon::monitor_tool,
+        enable   => $carbon::manage_monitor,
+        noop     => $carbon::bool_noops,
+      }
+    }
   }
 
   # ## Firewall management, if enabled ( firewall => true )
-  if $carbon::bool_firewall == true and $carbon::port != '' {
-    firewall { "carbon_${carbon::protocol}_${carbon::port}":
-      source      => $carbon::firewall_src,
-      destination => $carbon::firewall_dst,
-      protocol    => $carbon::protocol,
-      port        => $carbon::port,
-      action      => 'allow',
-      direction   => 'input',
-      tool        => $carbon::firewall_tool,
-      enable      => $carbon::manage_firewall,
-      noop        => $carbon::bool_noops,
+  if $carbon::bool_firewall == true {
+    if $carbon::port != '' {
+      firewall { "carbon_${carbon::protocol}_${carbon::port}":
+        source      => $carbon::firewall_src,
+        destination => $carbon::firewall_dst,
+        protocol    => $carbon::protocol,
+        port        => $carbon::port,
+        action      => 'allow',
+        direction   => 'input',
+        tool        => $carbon::firewall_tool,
+        enable      => $carbon::manage_firewall,
+        noop        => $carbon::bool_noops,
+      }
+    }
+
+    if $carbon::pickle_receiver_port != '' {
+      firewall { "carbon_pickle_receiver_port_tcp_${carbon::pickle_receiver_port}":
+        source      => $carbon::firewall_src,
+        destination => $carbon::firewall_dst,
+        protocol    => 'tcp',
+        port        => $carbon::pickle_receiver_port,
+        action      => 'allow',
+        direction   => 'input',
+        tool        => $carbon::firewall_tool,
+        enable      => $carbon::manage_firewall,
+        noop        => $carbon::bool_noops,
+      }
+    }
+
+    if $carbon::relay_line_receiver_port != '' {
+      firewall { "carbon_relay_line_receiver_port_tcp_${carbon::relay_line_receiver_port}":
+        source      => $carbon::firewall_src,
+        destination => $carbon::firewall_dst,
+        protocol    => 'tcp',
+        port        => $carbon::relay_line_receiver_port,
+        action      => 'allow',
+        direction   => 'input',
+        tool        => $carbon::firewall_tool,
+        enable      => $carbon::manage_firewall,
+        noop        => $carbon::bool_noops,
+      }
+    }
+
+    if $carbon::relay_pickle_receiver_port != '' {
+      firewall { "carbon_relay_pickle_receiver_port_tcp_${carbon::relay_pickle_receiver_port}":
+        source      => $carbon::firewall_src,
+        destination => $carbon::firewall_dst,
+        protocol    => 'tcp',
+        port        => $carbon::relay_pickle_receiver_port,
+        action      => 'allow',
+        direction   => 'input',
+        tool        => $carbon::firewall_tool,
+        enable      => $carbon::manage_firewall,
+        noop        => $carbon::bool_noops,
+      }
+    }
+
+    if $carbon::cache_query_port != '' {
+      firewall { "carbon_cache_query_port_tcp_${carbon::cache_query_port}":
+        source      => $carbon::firewall_src,
+        destination => $carbon::firewall_dst,
+        protocol    => 'tcp',
+        port        => $carbon::cache_query_port,
+        action      => 'allow',
+        direction   => 'input',
+        tool        => $carbon::firewall_tool,
+        enable      => $carbon::manage_firewall,
+        noop        => $carbon::bool_noops,
+      }
     }
   }
 

@@ -1,4 +1,4 @@
-[cache]
+[cache:<%= @instance_name %>]
 # Configure carbon directories.
 #
 # OS environment variables can be used to tell carbon where graphite is
@@ -157,14 +157,14 @@ CARBON_METRIC_INTERVAL = <%= @carbon_metric_interval %>
 
 [relay]
 LINE_RECEIVER_INTERFACE = 0.0.0.0
-LINE_RECEIVER_PORT = 2013
+LINE_RECEIVER_PORT = <%= @relay_line_receiver_port %>
 PICKLE_RECEIVER_INTERFACE = 0.0.0.0
-PICKLE_RECEIVER_PORT = 2014
+PICKLE_RECEIVER_PORT = <%= @relay_pickle_receiver_port %>
 
 # To use consistent hashing instead of the user defined relay-rules.conf,
 # change this to:
 # RELAY_METHOD = consistent-hashing
-RELAY_METHOD = rules
+RELAY_METHOD = <%= @relay_method %>
 
 # If you use consistent-hashing you may want to add redundancy
 # of your data by replicating every datapoint to more than
@@ -187,7 +187,7 @@ REPLICATION_FACTOR = 1
 #
 # If using RELAY_METHOD = rules, all destinations used in relay-rules.conf
 # must be defined in this list
-DESTINATIONS = 127.0.0.1:2004
+DESTINATIONS = <%= @relay_destinations %>
 
 # This defines the maximum "message size" between carbon daemons.
 # You shouldn't need to tune this unless you really know what you're doing.
